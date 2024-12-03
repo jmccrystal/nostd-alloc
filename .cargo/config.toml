@@ -1,0 +1,5 @@
+[build]
+rustflags = ["-Z", "pre-link-arg=-lSystem"]
+
+[unstable]
+build-std = ["core"]
