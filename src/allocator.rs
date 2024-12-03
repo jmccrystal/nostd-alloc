@@ -3,6 +3,7 @@ use core::ffi::c_void;
 use core::ptr::null_mut;
 use core::sync::atomic::Ordering::SeqCst;
 use core::sync::atomic::{AtomicPtr, AtomicUsize};
+use crate::ALLOC;
 
 static BASE_ADDR: AtomicPtr<u8> = AtomicPtr::new(null_mut());
 static OFFSET: AtomicUsize = AtomicUsize::new(0);
@@ -36,9 +37,10 @@ unsafe impl GlobalAlloc for DummyAllocator {
         let offset = OFFSET.load(SeqCst);
         let size = layout.size();
         
+        let mut page_size = PAGE_SIZE;
+        
         if size > PAGE_SIZE {
-            // TODO: handle heap allocations larger than 4096 bytes
-            panic!();
+            page_size = size;
         }
         
         // if memory chunk has not yet been allocated
@@ -46,7 +48,7 @@ unsafe impl GlobalAlloc for DummyAllocator {
         if addr.is_null() || offset > PAGE_SIZE - size {
             addr = mmap(
                 null_mut(),
-                PAGE_SIZE, 
+                page_size, 
                 PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_ANON, 
                 -1, 
@@ -67,3 +69,35 @@ unsafe impl GlobalAlloc for DummyAllocator {
 }
 
 
+/// # Safety
+/// Caller must ensure:
+/// - Size does not exceed allocated memory
+/// - Layout alignment is respected
+/// - Returned pointer is not used after free()
+/// - No other references to this memory exist
+///
+/// # Panics
+/// Will panic if size > isize::MAX
+#[must_use] pub unsafe fn malloc(size: usize) -> *mut u8 {
+    assert!(isize::try_from(size).is_ok());
+
+    // Unwrap to panic in the case of memory issue, rather than returning null ptr
+    let layout = Layout::from_size_align(size, 1).unwrap();
+    unsafe { ALLOC.alloc(layout) }
+}
+
+
+
+// /// # Safety
+// /// Caller must ensure:
+// /// - Pointer must be from malloc()
+// /// - Size matches original allocation
+// /// - No other references exist
+// /// - Memory not already freed
+// /// - Memory not used after free
+// // TODO: uncomment once dealloc() is implemented
+// pub unsafe fn free<T>(addr: *mut T, size: usize) {
+//     assert!(isize::try_from(size).is_ok());
+//     let layout = Layout::from_size_align(size, 1).unwrap();
+//     unsafe { ALLOC.dealloc(addr.cast::<u8>(), layout) }
+// }
