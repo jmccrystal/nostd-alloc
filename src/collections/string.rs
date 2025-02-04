@@ -7,7 +7,7 @@ pub struct String {
 }
 
 impl String {
-    // Pushes utf 8 single bytes
+    // Pushes utf-8 single bytes
     pub fn push(&mut self, str: &str) {
         self.vec.push_slice(str.as_bytes());
     }

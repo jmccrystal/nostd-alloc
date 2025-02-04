@@ -1,19 +1,25 @@
+use core::array::IntoIter;
 use core::cmp::max;
 use crate::allocator::malloc;
 use crate::io::{Printable, print};
 
 pub struct Vec<T> {
+    // current location of vec pointer
     offset: usize,
+    // size of vec in bytes
     capacity: usize,
+    // base address
     addr: *mut T,
 }
 
+// TODO: implement Iterator
+// TODO: add access by index
 impl<T> Vec<T> {
     pub fn with_capacity(capacity: usize) -> Self {
         let addr = unsafe { malloc(capacity).cast::<T>() };
         Self { offset: 0, capacity, addr }
     }
-    // TODO: `size_of()` func is being used as byte count and length, making every vec with 
+    // TODO: `size_of()` func is being used as byte count and length, making every vec with
     // element size of anything other 1 not work.
     pub fn push(&mut self, data: T) {
         // Resize if push will exceed capacity
@@ -41,6 +47,7 @@ impl<T> Vec<T> {
         let new_size = max(self.capacity * 2, needed_size);
         // If resize is necessary, reallocate and increase size
         let new_vec = Self::with_capacity(new_size);
+        
         unsafe {
             // Copy data from old vec to new vec
             core::ptr::copy_nonoverlapping(self.addr, new_vec.addr, self.offset);
@@ -75,3 +82,13 @@ impl<T: Clone + Printable> Printable for Vec<T> {
         }
     }
 }
+
+// impl<T> Iterator for Vec<T> {
+//     type Item = T;
+// 
+//     // TODO: this is wrong, need to know where it is?
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let new_addr = self.offset += size_of::<T>();
+//         
+//     }
+// }
